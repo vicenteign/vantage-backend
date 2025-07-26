@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres-prod:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=vantageai_prod
+      - POSTGRES_USER=vantage_user
+      - POSTGRES_PASSWORD=vantage_password_prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vantage_user -d vantageai_prod"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend Flask (producción)
+  backend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      - FLASK_APP=run_backend.py
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://vantage_user:vantage_password_prod@postgres-prod:5432/vantageai_prod
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-super-secret-jwt-key-change-this}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - ./static:/app/static
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+    ports:
+      - "5002:5002"
+
+  # Frontend Next.js (producción)
+  frontend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend.prod
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:5002
+    restart: unless-stopped
+    depends_on:
+      - backend-prod
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data: 

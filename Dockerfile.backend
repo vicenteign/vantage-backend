@@ -1,0 +1,43 @@
+# Dockerfile para el backend Flask
+FROM python:3.11-slim
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar y instalar dependencias de Python
+COPY requirements_clean.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar código del backend
+COPY vantage_backend/ ./vantage_backend/
+COPY migrations/ ./migrations/
+COPY run_backend.py .
+COPY populate_database.py .
+COPY create_quotes.py .
+COPY fix_service_categories.py .
+COPY entrypoint.sh .
+
+# Crear directorios necesarios
+RUN mkdir -p /app/static/uploads/quotes
+RUN mkdir -p /app/instance
+RUN chmod 755 /app/instance
+RUN chmod +x /app/entrypoint.sh
+
+# Exponer puerto
+EXPOSE 5002
+
+# Configurar variables de entorno
+ENV FLASK_APP=run_backend.py
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/app
+
+# Usar el script de entrada
+ENTRYPOINT ["/app/entrypoint.sh"] 

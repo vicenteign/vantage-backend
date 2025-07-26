@@ -1,0 +1,24 @@
+# Dockerfile para desarrollo del frontend Next.js
+FROM node:18-alpine
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Instalar dependencias de desarrollo
+RUN apk add --no-cache git
+
+# Copiar archivos de dependencias
+COPY vantageai-frontend/package*.json ./
+
+# Instalar todas las dependencias (incluyendo devDependencies)
+RUN npm install
+
+# Exponer puerto
+EXPOSE 3000
+
+# Variables de entorno
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Comando para desarrollo
+CMD ["npm", "run", "dev"] 
