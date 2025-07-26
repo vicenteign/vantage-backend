@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Copiar archivos de dependencias
 COPY vantageai-frontend/package.json vantageai-frontend/package-lock.json* ./
-RUN npm ci --only=production
+RUN npm ci
 
 # Rebuild, the application source, when needed
 FROM base AS builder
