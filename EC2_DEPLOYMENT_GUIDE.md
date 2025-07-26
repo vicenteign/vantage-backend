@@ -62,13 +62,18 @@ git clone https://github.com/tu-usuario/vantage.git
 cd vantage
 ```
 
-### 2. ⚙️ Configurar Variables de Entorno
+### 2. ⚙️ Configurar Variables de Entorno (IMPORTANTE)
 ```bash
-# Crear archivo .env
-cat > .env << EOF
-JWT_SECRET_KEY=$(openssl rand -hex 32)
-OPENAI_API_KEY=tu_openai_api_key_aqui
-EOF
+# 🎯 ORDEN CORRECTO:
+# 1. Crear archivo .env
+./create_env.sh
+
+# 2. Editar .env con tus configuraciones
+nano .env
+
+# 3. Configuraciones importantes a editar:
+#    - OPENAI_API_KEY=tu_clave_real_aqui
+#    - CORS_ORIGINS=tu_dominio_o_ip_aqui
 ```
 
 ## 🚀 Desplegar la Aplicación
@@ -78,7 +83,7 @@ EOF
 # Dar permisos de ejecución
 chmod +x deploy.sh
 
-# Ejecutar despliegue
+# Ejecutar despliegue (requiere .env creado)
 ./deploy.sh
 ```
 
@@ -176,6 +181,18 @@ docker-compose -f docker-compose.prod.yml logs postgres-prod
 
 # Verificar conectividad
 docker-compose -f docker-compose.prod.yml exec backend-prod ping postgres-prod
+```
+
+### Error: Archivo .env no encontrado
+```bash
+# Crear archivo .env
+./create_env.sh
+
+# Editar configuración
+nano .env
+
+# Volver a ejecutar despliegue
+./deploy.sh
 ```
 
 ## 📝 Comandos Útiles

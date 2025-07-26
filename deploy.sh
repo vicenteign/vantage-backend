@@ -43,19 +43,21 @@ setup_directories() {
 setup_environment() {
     log "⚙️ Configurando variables de entorno..."
     
-    # Crear archivo .env si no existe
+    # Verificar que .env existe
     if [ ! -f .env ]; then
-        cat > .env << EOF
-# Variables de entorno para producción
-JWT_SECRET_KEY=$(openssl rand -hex 32)
-OPENAI_API_KEY=your_openai_api_key_here
-EOF
-        log "📝 Archivo .env creado"
-    else
-        log "📝 Archivo .env ya existe"
+        log "❌ Archivo .env no encontrado"
+        log "📝 Ejecuta primero: ./create_env.sh"
+        exit 1
     fi
     
-    log "✅ Variables de entorno configuradas"
+    # Verificar que OPENAI_API_KEY esté configurado
+    if grep -q "your_openai_api_key_here" .env; then
+        log "⚠️  OPENAI_API_KEY no está configurado en .env"
+        log "📝 Edita el archivo .env y configura tu API key"
+        log "💡 Puedes continuar sin OpenAI para funcionalidad básica"
+    fi
+    
+    log "✅ Variables de entorno verificadas"
 }
 
 # Detener y limpiar contenedores existentes
