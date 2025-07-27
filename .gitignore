@@ -57,6 +57,10 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
+# Package lock files (regenerate in Docker)
+package-lock.json
+yarn.lock
+
 # dotenv environment variables file
 .env
 

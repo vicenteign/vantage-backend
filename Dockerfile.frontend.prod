@@ -7,8 +7,8 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copiar archivos de dependencias
-COPY vantageai-frontend/package.json vantageai-frontend/package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+COPY vantageai-frontend/package.json ./
+RUN npm install --legacy-peer-deps
 
 # Rebuild, the application source, when needed
 FROM base AS builder
