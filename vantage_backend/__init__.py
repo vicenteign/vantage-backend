@@ -32,9 +32,13 @@ def create_app(config_class=Config):
         "https://*.amazonaws.com",   # Permitir dominios de AWS con HTTPS
         "http://*.compute.amazonaws.com",  # EC2 específico
         "https://*.compute.amazonaws.com", # EC2 específico con HTTPS
+        "http://3.141.40.201:3000",  # Tu IP específica de EC2
+        "http://3.141.40.201:5002",  # Tu IP específica de EC2
+        "https://3.141.40.201:3000", # Tu IP específica de EC2 con HTTPS
+        "https://3.141.40.201:5002", # Tu IP específica de EC2 con HTTPS
     ]
     
-    # Agregar IP pública de EC2 si está disponible
+    # Agregar IP pública de EC2 si está disponible en variables de entorno
     import os
     ec2_public_ip = os.environ.get('EC2_PUBLIC_IP')
     if ec2_public_ip:
@@ -47,7 +51,12 @@ def create_app(config_class=Config):
             f"https://{ec2_public_ip}:5002",
         ])
 
-    CORS(app, origins=cors_origins, supports_credentials=True)
+    # Configuración CORS más permisiva para desarrollo/producción
+    CORS(app, 
+         origins=cors_origins, 
+         supports_credentials=True,
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
 
     # Importar y registrar Blueprints
     from .routes import main_bp
