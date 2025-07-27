@@ -25,6 +25,12 @@ COPY create_quotes.py .
 COPY fix_service_categories.py .
 COPY entrypoint.sh .
 
+# Copiar archivos de prueba y utilidades
+COPY create_test_user.py .
+COPY create_test_client.py .
+COPY fix_passwords.py .
+COPY simple_populate.py .
+
 # Crear directorios necesarios
 RUN mkdir -p /app/static/uploads/quotes
 RUN mkdir -p /app/instance
