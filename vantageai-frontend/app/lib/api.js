@@ -6,6 +6,7 @@ const getBaseURL = () => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
+    const port = window.location.port;
     
     // Si estamos en ngrok, usar la URL del backend configurada
     if (hostname.includes('ngrok-free.app')) {
@@ -23,6 +24,14 @@ const getBaseURL = () => {
       }
       
       return backendNgrokUrl;
+    }
+    
+    // Si estamos en EC2 (detectar por IP pública o dominio AWS)
+    if (hostname.includes('amazonaws.com') || 
+        hostname.includes('compute.amazonaws.com') ||
+        hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+      // Usar la misma IP/hostname pero puerto 5002 para el backend
+      return `${protocol}//${hostname}:5002`;
     }
     
     // Si estamos en localhost, usar localhost:5002

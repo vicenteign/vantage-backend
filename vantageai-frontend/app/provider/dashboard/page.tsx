@@ -50,18 +50,18 @@ export default function ProviderDashboard() {
   if (loading) {
     return (
       <ProtectedRoute requiredRole="proveedor">
-        <DashboardLayout>
-          <div className="flex items-center justify-center h-64">
-            <div className="text-gray-500">Cargando...</div>
-          </div>
-        </DashboardLayout>
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-gray-500">Cargando...</div>
+        </div>
+      </DashboardLayout>
       </ProtectedRoute>
     );
   }
 
   return (
     <ProtectedRoute requiredRole="proveedor">
-      <DashboardLayout>
+    <DashboardLayout>
         <div className="space-y-6">
           {/* Header */}
           <div>

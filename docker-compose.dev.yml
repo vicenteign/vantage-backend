@@ -56,7 +56,7 @@ services:
     command: ["npm", "run", "dev"]
     restart: unless-stopped
     depends_on:
-      - backend-dev
+      - backend-dev 
 
 volumes:
   postgres_data: 

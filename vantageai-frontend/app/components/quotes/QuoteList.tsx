@@ -330,9 +330,9 @@ export function QuoteList({ userRole }: QuoteListProps) {
               📄 Subir PDF
             </Button>
           )}
-          <Button onClick={fetchQuotes} variant="outline" size="sm">
-            Actualizar
-          </Button>
+        <Button onClick={fetchQuotes} variant="outline" size="sm">
+          Actualizar
+        </Button>
         </div>
       </div>
       

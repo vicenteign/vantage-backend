@@ -55,7 +55,7 @@ export default function ClientProducts() {
       if (isInitial) {
         setInitialLoading(true);
       } else {
-        setLoading(true);
+      setLoading(true);
       }
       setError(null);
       const params = new URLSearchParams();
@@ -84,7 +84,7 @@ export default function ClientProducts() {
       if (isInitial) {
         setInitialLoading(false);
       } else {
-        setLoading(false);
+      setLoading(false);
       }
     }
   }, []);
@@ -240,10 +240,10 @@ export default function ClientProducts() {
             {/* Search and Filters - Diseño mejorado */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
               {useMemo(() => (
-                <SearchFiltersFixed 
-                  type="products" 
-                  onFiltersChange={handleFiltersChange}
-                />
+              <SearchFiltersFixed 
+                type="products" 
+                onFiltersChange={handleFiltersChange}
+              />
               ), [handleFiltersChange])}
             </div>
 
@@ -258,9 +258,9 @@ export default function ClientProducts() {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
                     <p className="text-sm text-gray-600">Actualizando...</p>
                   </div>
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
 
             {/* Pagination */}
             {pagination && pagination.total_pages > 1 && (

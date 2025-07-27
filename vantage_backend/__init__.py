@@ -20,17 +20,37 @@ def create_app(config_class=Config):
     jwt.init_app(app)
     migrate = Migrate(app, db)
 
-    # Habilitar CORS para todas las rutas desde localhost:3000 y ngrok
-    CORS(app, origins=[
+    # Configuración de CORS más flexible para EC2
+    cors_origins = [
         "http://localhost:3000", 
         "http://127.0.0.1:3000", 
         "http://localhost:5002", 
         "http://127.0.0.1:5002",
         "https://5a218fd5abba.ngrok-free.app",
-        "https://*.ngrok-free.app"  # Permitir cualquier subdominio de ngrok
-    ], supports_credentials=True)
+        "https://*.ngrok-free.app",  # Permitir cualquier subdominio de ngrok
+        "http://*.amazonaws.com",    # Permitir dominios de AWS
+        "https://*.amazonaws.com",   # Permitir dominios de AWS con HTTPS
+        "http://*.compute.amazonaws.com",  # EC2 específico
+        "https://*.compute.amazonaws.com", # EC2 específico con HTTPS
+    ]
+    
+    # Agregar IP pública de EC2 si está disponible
+    import os
+    ec2_public_ip = os.environ.get('EC2_PUBLIC_IP')
+    if ec2_public_ip:
+        cors_origins.extend([
+            f"http://{ec2_public_ip}",
+            f"http://{ec2_public_ip}:3000",
+            f"http://{ec2_public_ip}:5002",
+            f"https://{ec2_public_ip}",
+            f"https://{ec2_public_ip}:3000",
+            f"https://{ec2_public_ip}:5002",
+        ])
+
+    CORS(app, origins=cors_origins, supports_credentials=True)
 
     # Importar y registrar Blueprints
+    from .routes import main_bp
     from .auth_bp import auth_bp
     from .provider_bp import provider_bp
     from .catalog_bp import catalog_bp
@@ -39,6 +59,7 @@ def create_app(config_class=Config):
     from .upload_bp import upload_bp
     from .notifications_bp import notifications_bp
 
+    app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(provider_bp)
     app.register_blueprint(catalog_bp)
