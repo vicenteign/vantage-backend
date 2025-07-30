@@ -100,4 +100,7 @@ backup_*.sql
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+# Frontend (separate repository)
+vantageai-frontend/ 
