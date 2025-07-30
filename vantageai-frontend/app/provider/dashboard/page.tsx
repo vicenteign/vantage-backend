@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/app/components/layout/DashboardLayout';
 import { ProtectedRoute } from '@/app/components/auth/ProtectedRoute';
 import { ProviderDashboardTour } from '@/app/components/onboarding/ProviderDashboardTour';
+import { OnboardingRedirect } from '@/app/components/auth/OnboardingRedirect';
 import apiClient from '@/app/lib/api';
 import { toast } from 'sonner';
 
@@ -74,18 +75,21 @@ export default function ProviderDashboard() {
   if (loading) {
     return (
       <ProtectedRoute requiredRole="proveedor">
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Cargando...</div>
-        </div>
-      </DashboardLayout>
+        <OnboardingRedirect>
+          <DashboardLayout>
+            <div className="flex items-center justify-center h-64">
+              <div className="text-gray-500">Cargando...</div>
+            </div>
+          </DashboardLayout>
+        </OnboardingRedirect>
       </ProtectedRoute>
     );
   }
 
   return (
     <ProtectedRoute requiredRole="proveedor">
-    <DashboardLayout>
+      <OnboardingRedirect>
+        <DashboardLayout>
         <div className="space-y-6">
           {/* Header */}
           <div>
@@ -164,7 +168,8 @@ export default function ProviderDashboard() {
           onComplete={handleTourComplete}
           onSkip={handleTourSkip}
         />
-      </DashboardLayout>
+        </DashboardLayout>
+      </OnboardingRedirect>
     </ProtectedRoute>
   );
 } 

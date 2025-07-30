@@ -18,6 +18,7 @@ import {
   SparklesIcon
 } from '@heroicons/react/24/outline';
 import { ClientDashboardTour } from '@/app/components/onboarding/ClientDashboardTour';
+import { OnboardingRedirect } from '@/app/components/auth/OnboardingRedirect';
 
 interface ClientStats {
   total_quotes_sent: number;
@@ -252,7 +253,8 @@ export default function ClientDashboard() {
 
   return (
     <ProtectedRoute requiredRole="cliente">
-      <DashboardLayout>
+      <OnboardingRedirect>
+        <DashboardLayout>
         {/* Tour Component */}
         <ClientDashboardTour 
           isActive={isTourActive}
@@ -675,7 +677,8 @@ export default function ClientDashboard() {
             </div>
           </div>
         )}
-      </DashboardLayout>
-    </ProtectedRoute>
-  );
+              </DashboardLayout>
+      </OnboardingRedirect>
+      </ProtectedRoute>
+    );
 } 
