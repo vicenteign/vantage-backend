@@ -15,7 +15,7 @@ export function OnboardingCheck({ children }: OnboardingCheckProps) {
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         if (!token) {
           router.push('/auth/login');
           return;

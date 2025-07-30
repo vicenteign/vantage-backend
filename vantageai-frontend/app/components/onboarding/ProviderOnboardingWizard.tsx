@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import apiClient from '@/app/lib/api';
 import { ProviderWelcomeStep } from './steps/ProviderWelcomeStep';
 import { ProviderCompanyIdentityStep } from './steps/ProviderCompanyIdentityStep';
 import { ProviderCertificationsStep } from './steps/ProviderCertificationsStep';
@@ -29,15 +30,9 @@ export function ProviderOnboardingWizard() {
   const handleComplete = async () => {
     try {
       // Llamar al endpoint para marcar onboarding como completado
-      const response = await fetch('/api/users/complete-onboarding', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiClient.put('/api/users/complete-onboarding');
 
-      if (response.ok) {
+      if (response.status === 200) {
         router.push('/provider/dashboard');
       } else {
         console.error('Error completing onboarding');

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import apiClient from '@/app/lib/api';
 import { WelcomeStep } from './steps/WelcomeStep';
 import { CompanyIdentityStep } from './steps/CompanyIdentityStep';
 import { FinalStep } from './steps/FinalStep';
@@ -25,15 +26,9 @@ export function ClientOnboardingWizard() {
   const handleComplete = async () => {
     try {
       // Llamar al endpoint para marcar onboarding como completado
-      const response = await fetch('/api/users/complete-onboarding', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await apiClient.put('/api/users/complete-onboarding');
 
-      if (response.ok) {
+      if (response.status === 200) {
         router.push('/client/dashboard');
       } else {
         console.error('Error completing onboarding');
