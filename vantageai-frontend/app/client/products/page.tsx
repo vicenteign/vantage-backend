@@ -7,7 +7,7 @@ import { DashboardLayout } from '@/app/components/layout/DashboardLayout';
 import { ProtectedRoute } from '@/app/components/auth/ProtectedRoute';
 import { SearchFiltersFixed } from '@/app/components/catalog/SearchFiltersFixed';
 import { Pagination } from '@/app/components/ui/Pagination';
-import { ProductCardSkeleton } from '@/app/components/ui/LoadingSkeleton';
+import { ProductCard, ProductCardSkeleton } from '@/app/components/catalog/ProductCard';
 import { MagnifyingGlassIcon, FunnelIcon, XMarkIcon, StarIcon } from '@heroicons/react/24/outline';
 import apiClient from '@/app/lib/api';
 
@@ -107,98 +107,18 @@ export default function ClientProducts() {
     fetchProducts(filters, page, false);
   }, [fetchProducts, filters]);
 
-  // Componente ProductCard optimizado
-  const ProductCard = ({ product, onClick }: { product: Product; onClick: () => void }) => (
-    <div
-      className="group bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-blue-200 transition-all duration-200 cursor-pointer overflow-hidden"
-      onClick={onClick}
-    >
-      {/* Header con badge destacado */}
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2 group-hover:text-blue-600 transition-colors">
-              {product.name}
-            </h3>
-          </div>
-          {product.is_featured && (
-            <div className="ml-3 flex-shrink-0">
-              <div className="p-1.5 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg text-white shadow-sm">
-                <StarIcon className="w-4 h-4" />
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* SKU Badge */}
-        <div className="mb-3">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-            SKU: {product.sku}
-          </span>
-        </div>
-        
-        {/* Descripción */}
-        <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed mb-4">
-          {product.description}
-        </p>
-      </div>
-      
-      {/* Información del producto */}
-      <div className="px-6 pb-4">
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500">Categoría</span>
-            <span className="font-medium text-gray-900">{product.category.name}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500">Proveedor</span>
-            <span className="font-medium text-gray-900 truncate ml-2">{product.provider.company_name}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500">Precio</span>
-            <span className="font-semibold text-green-600">
-              {product.price ? `$${product.price.toLocaleString()}` : 'Consultar'}
-            </span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Footer */}
-      <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-400">
-            {new Date(product.created_at).toLocaleDateString()}
-          </span>
-          <span className="text-sm text-blue-600 font-medium group-hover:text-blue-700 transition-colors">
-            Ver detalles →
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+
 
   // Memoizar el contenido de los productos para mejor rendimiento
   const productsContent = useMemo(() => {
     // Mostrar skeleton durante la carga inicial
     if (initialLoading) {
-      return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <ProductCardSkeleton count={6} />
-          </div>
-        </div>
-      );
+      return <ProductCardSkeleton count={6} />;
     }
 
     // Mostrar skeleton durante filtros/paginación
     if (loading && !initialLoading) {
-      return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <ProductCardSkeleton count={6} />
-          </div>
-        </div>
-      );
+      return <ProductCardSkeleton count={6} />;
     }
 
     if (products.length === 0) {

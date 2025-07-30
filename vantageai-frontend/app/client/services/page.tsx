@@ -7,7 +7,7 @@ import { DashboardLayout } from '@/app/components/layout/DashboardLayout';
 import { ProtectedRoute } from '@/app/components/auth/ProtectedRoute';
 import { SearchFiltersFixed } from '@/app/components/catalog/SearchFiltersFixed';
 import { Pagination } from '@/app/components/ui/Pagination';
-import { ServiceCardSkeleton } from '@/app/components/ui/LoadingSkeleton';
+import { ServiceCard, ServiceCardSkeleton } from '@/app/components/catalog/ServiceCard';
 import { MagnifyingGlassIcon, StarIcon } from '@heroicons/react/24/outline';
 import apiClient from '@/app/lib/api';
 
@@ -112,98 +112,18 @@ export default function ClientServices() {
     fetchServices(filters, page, false);
   }, [fetchServices, filters]);
 
-  // Componente ServiceCard optimizado
-  const ServiceCard = ({ service, onClick }: { service: Service; onClick: () => void }) => (
-    <div
-      className="group bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-green-200 transition-all duration-200 cursor-pointer overflow-hidden"
-      onClick={onClick}
-    >
-      {/* Header con badge destacado */}
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2 group-hover:text-green-600 transition-colors">
-              {service.name}
-            </h3>
-          </div>
-          {service.is_featured && (
-            <div className="ml-3 flex-shrink-0">
-              <div className="p-1.5 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg text-white shadow-sm">
-                <StarIcon className="w-4 h-4" />
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Modalidad Badge */}
-        <div className="mb-3">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
-            {service.modality}
-          </span>
-        </div>
-        
-        {/* Descripción */}
-        <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed mb-4">
-          {service.description}
-        </p>
-      </div>
-      
-      {/* Información del servicio */}
-      <div className="px-6 pb-4">
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500">Categoría</span>
-            <span className="font-medium text-gray-900">{service.category?.name || 'Sin categoría'}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500">Proveedor</span>
-            <span className="font-medium text-gray-900 truncate ml-2">{service.provider.company_name}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500">Precio</span>
-            <span className="font-semibold text-green-600">
-              {service.price ? `$${service.price.toLocaleString()}` : 'Consultar'}
-            </span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Footer */}
-      <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-400">
-            {new Date(service.created_at).toLocaleDateString()}
-          </span>
-          <span className="text-sm text-green-600 font-medium group-hover:text-green-700 transition-colors">
-            Ver detalles →
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+
 
   // Memoizar el contenido de los servicios para mejor rendimiento
   const servicesContent = useMemo(() => {
     // Mostrar skeleton durante la carga inicial
     if (initialLoading) {
-      return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <ServiceCardSkeleton count={6} />
-          </div>
-        </div>
-      );
+      return <ServiceCardSkeleton count={6} />;
     }
 
     // Mostrar skeleton durante filtros/paginación
     if (loading && !initialLoading) {
-      return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <ServiceCardSkeleton count={6} />
-          </div>
-        </div>
-      );
+      return <ServiceCardSkeleton count={6} />;
     }
 
     if (services.length === 0) {
