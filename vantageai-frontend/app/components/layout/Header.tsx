@@ -40,7 +40,11 @@ export function Header({ onMenuToggle }: HeaderProps) {
         </div>
         
         <div className="flex items-center space-x-2">
-          {userRole === 'proveedor' && <NotificationCenter />}
+          {userRole === 'proveedor' && (
+            <div data-tour="notifications">
+              <NotificationCenter />
+            </div>
+          )}
           {userInfo && (
             <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
               <span className="text-gray-600 text-sm font-medium">

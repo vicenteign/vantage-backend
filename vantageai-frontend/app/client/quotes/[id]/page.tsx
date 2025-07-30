@@ -1,258 +1,563 @@
-"use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
+'use client';
 
-interface Quote {
-  id: number;
-  client: any;
-  provider: any;
-  item: any;
-  quantity: number;
-  message: string;
-  created_at: string;
-  status: string;
-  attachments: any[];
-}
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { DashboardLayout } from '@/app/components/layout/DashboardLayout';
+import { ProtectedRoute } from '@/app/components/auth/ProtectedRoute';
+import apiClient from '@/app/lib/api';
+import { toast } from 'sonner';
+import { 
+  DocumentTextIcon,
+  MagnifyingGlassIcon,
+  BuildingOfficeIcon,
+  CurrencyDollarIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  StarIcon,
+  ArrowLeftIcon,
+  EyeIcon,
+  FunnelIcon
+} from '@heroicons/react/24/outline';
 
 interface QuoteResponse {
   id: number;
-  provider_id: number;
-  response_pdf_url: string;
+  provider: {
+    id: number;
+    company_name: string;
+  };
   total_price: number;
   currency: string;
+  delivery_time: string;
   certifications_count: number;
-  ia_data: any;
+  certifications: string[];
+  pdf_url: string;
   created_at: string;
+  ai_analysis: {
+    price_analysis: string;
+    delivery_analysis: string;
+    quality_analysis: string;
+    recommendation: string;
+  };
 }
 
-export default function QuoteDetailPage({ params }: { params: { id: string } }) {
-  const [quote, setQuote] = useState<Quote | null>(null);
+interface QuoteRequest {
+  id: number;
+  item_name: string;
+  item_type: 'producto' | 'servicio';
+  description: string;
+  status: string;
+  created_at: string;
+  responses_count: number;
+}
+
+export default function ClientQuoteAnalysisPage() {
+  const params = useParams();
+  const router = useRouter();
+  const quoteId = params.id as string;
+  
+  const [quoteRequest, setQuoteRequest] = useState<QuoteRequest | null>(null);
   const [responses, setResponses] = useState<QuoteResponse[]>([]);
-  const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);
-  const quoteId = params.id;
-  const [iaLoading, setIaLoading] = useState(false);
-  const [iaResult, setIaResult] = useState<any>(null);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'price' | 'delivery' | 'certifications' | 'date'>('price');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
+    const fetchQuoteData = async () => {
       try {
-        // Usar el cliente API configurado que incluye el token JWT
-        const apiClient = (await import('../../../lib/api')).default;
+        const [quoteResponse, responsesResponse] = await Promise.all([
+          apiClient.get(`/quotes/${quoteId}`),
+          apiClient.get(`/quotes/${quoteId}/responses`)
+        ]);
         
-        const res1 = await apiClient.get(`/api/quotes/${quoteId}`);
-        setQuote(res1.data.quote);
-        
-        const res2 = await apiClient.get(`/api/quotes/${quoteId}/responses`);
-        setResponses(res2.data.responses || []);
-      } catch (error) {
-        console.error('Error fetching data:', error);
+        setQuoteRequest(quoteResponse.data);
+        setResponses(responsesResponse.data.responses || []);
+      } catch (error: any) {
+        toast.error('Error al cargar la cotización', {
+          description: error.response?.data?.message || 'No se pudo cargar la información'
+        });
+        router.push('/client/quotes');
       } finally {
         setLoading(false);
       }
+    };
+
+    if (quoteId) {
+      fetchQuoteData();
     }
-    fetchData();
-  }, [quoteId]);
+  }, [quoteId, router]);
 
-  const filteredResponses = responses.filter(r => {
-    if (!filter) return true;
-    // Filtro IA: busca en todos los campos stringificables
-    return JSON.stringify(r).toLowerCase().includes(filter.toLowerCase());
-  });
-
-  async function handleIaFilter() {
-    setIaLoading(true);
-    setIaResult(null);
-    try {
-      // Usar el cliente API configurado
-      const apiClient = (await import('../../../lib/api')).default;
+  // Filtrar y ordenar respuestas
+  const filteredAndSortedResponses = responses
+    .filter(response => {
+      if (!filterQuery) return true;
       
-      const response = await apiClient.post('/api/ia/analyze-quotes', {
-        pdfs: responses.map(r => ({
-          id: r.id,
-          pdf_url: `${process.env.NEXT_PUBLIC_API_URL}/uploads/quotes/${r.response_pdf_url.split('/').pop()}`
-        }))
-      });
+      const query = filterQuery.toLowerCase();
+      return (
+        response.provider.company_name.toLowerCase().includes(query) ||
+        response.total_price.toString().includes(query) ||
+        response.currency.toLowerCase().includes(query) ||
+        response.delivery_time.toLowerCase().includes(query) ||
+        response.certifications.some(cert => cert.toLowerCase().includes(query)) ||
+        response.ai_analysis.price_analysis.toLowerCase().includes(query) ||
+        response.ai_analysis.quality_analysis.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      let aValue: any, bValue: any;
       
-      const data = response.data;
-      setIaResult(data);
-      
-      // Si la IA devuelve resultados, los mostramos en la tabla
-      if (data && data.results) {
-        // Mapeo: id -> ia_result
-        const iaMap = Object.fromEntries(data.results.map((r: any) => [r.id, r.ia_result]));
-        setResponses(responses.map(r => ({ ...r, ia_data: iaMap[r.id] })));
+      switch (sortBy) {
+        case 'price':
+          aValue = a.total_price;
+          bValue = b.total_price;
+          break;
+        case 'delivery':
+          // Extraer días de delivery_time (ej: "30 días" -> 30)
+          aValue = parseInt(a.delivery_time.match(/\d+/)?.[0] || '0');
+          bValue = parseInt(b.delivery_time.match(/\d+/)?.[0] || '0');
+          break;
+        case 'certifications':
+          aValue = a.certifications_count;
+          bValue = b.certifications_count;
+          break;
+        case 'date':
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+        default:
+          return 0;
       }
-    } catch (err: any) {
-      console.error('Error en análisis IA:', err);
-      setIaResult({ error: err.response?.data?.error || "Error al filtrar con IA" });
-    } finally {
-      setIaLoading(false);
+      
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+  const handleSort = (field: 'price' | 'delivery' | 'certifications' | 'date') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
     }
+  };
+
+  const openPdf = (pdfUrl: string) => {
+    window.open(pdfUrl, '_blank');
+  };
+
+  const getPriceColor = (price: number, responses: QuoteResponse[]) => {
+    const prices = responses.map(r => r.total_price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    
+    if (price === minPrice) return 'text-green-600 font-bold';
+    if (price === maxPrice) return 'text-red-600 font-bold';
+    return 'text-gray-900';
+  };
+
+  const getDeliveryColor = (delivery: string) => {
+    const days = parseInt(delivery.match(/\d+/)?.[0] || '0');
+    if (days <= 7) return 'text-green-600 font-bold';
+    if (days <= 30) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
+  if (loading) {
+    return (
+      <ProtectedRoute requiredRole="cliente">
+        <DashboardLayout>
+          <div className="min-h-screen bg-gray-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+                <div className="bg-white rounded-xl shadow-sm p-8">
+                  <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="h-16 bg-gray-200 rounded-lg"></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
   }
 
-  if (loading) return <div>Cargando...</div>;
-  if (!quote) return <div>No se encontró la cotización.</div>;
+  if (!quoteRequest) {
+    return (
+      <ProtectedRoute requiredRole="cliente">
+        <DashboardLayout>
+          <div className="min-h-screen bg-gray-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="text-center">
+                <DocumentTextIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Cotización no encontrada</h3>
+                <p className="text-gray-600 mb-6">La cotización no existe o no tienes acceso</p>
+                <button
+                  onClick={() => router.push('/client/quotes')}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <ArrowLeftIcon className="w-5 h-5 mr-2" />
+                  Volver a Cotizaciones
+                </button>
+              </div>
+            </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">Detalle de Cotización</h1>
-      <div className="bg-white rounded shadow p-4 mb-6">
-        <h2 className="font-semibold mb-2">Resumen de la Solicitud</h2>
-        <div><b>Producto/Servicio:</b> {quote.item.name} ({quote.item.type})</div>
-        <div><b>Cantidad:</b> {quote.quantity}</div>
-        <div><b>Mensaje:</b> {quote.message}</div>
-        <div><b>Fecha:</b> {new Date(quote.created_at).toLocaleString()}</div>
-        <div><b>Proveedor:</b> {quote.provider.name}</div>
-        <div><b>Estado:</b> {quote.status}</div>
-      </div>
-      <div className="bg-white rounded shadow p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="font-semibold text-lg">Análisis de Respuestas con IA</h2>
-          <button
-            onClick={handleIaFilter}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg disabled:opacity-50 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center gap-2"
-            disabled={iaLoading || responses.length === 0}
-          >
-            {iaLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Analizando...
-              </>
-            ) : (
-              <>
-                🤖 Analizar con IA
-              </>
-            )}
-          </button>
-        </div>
-        
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="🔍 Buscar en las cotizaciones..."
-            className="border border-gray-300 px-4 py-2 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-          />
-        </div>
-        {/* Contador de respuestas */}
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">
-              📊 {responses.length} respuesta{responses.length !== 1 ? 's' : ''} recibida{responses.length !== 1 ? 's' : ''}
-            </span>
-            {responses.length > 0 && (
-              <span className="text-sm text-gray-600">
-                💰 Rango de precios: ${Math.min(...responses.map(r => r.total_price || 0)).toLocaleString()} - ${Math.max(...responses.map(r => r.total_price || 0)).toLocaleString()}
-              </span>
-            )}
-          </div>
-        </div>
+    <ProtectedRoute requiredRole="cliente">
+      <DashboardLayout>
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {/* Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <button
+                  onClick={() => router.back()}
+                  className="p-2 rounded-lg bg-white shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+                </button>
+                <div>
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Análisis de Cotización
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    {quoteRequest.item_name} • {responses.length} respuestas recibidas
+                  </p>
+                </div>
+              </div>
+            </div>
 
-        {/* Resultados de IA */}
-        {iaResult && iaResult.summary && (
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 text-blue-900 p-4 rounded-lg mb-4">
-            <div className="flex items-start gap-3">
-              <div className="text-2xl">🤖</div>
-              <div>
-                <h3 className="font-semibold mb-1">Análisis IA Completado</h3>
-                <p className="text-sm">{iaResult.summary}</p>
+            {/* Información de la solicitud */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">{quoteRequest.item_name}</h2>
+                  <p className="text-gray-600 mb-2">{quoteRequest.description}</p>
+                  <div className="flex items-center gap-3">
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                      quoteRequest.item_type === 'producto' 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {quoteRequest.item_type === 'producto' ? 'Producto' : 'Servicio'}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      Creada el {new Date(quoteRequest.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-blue-600">{responses.length}</div>
+                  <div className="text-sm text-gray-500">Respuestas</div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-        {iaResult && iaResult.error && (
-          <div className="bg-red-50 border border-red-200 text-red-900 p-4 rounded-lg mb-4">
-            <div className="flex items-start gap-3">
-              <div className="text-2xl">⚠️</div>
-              <div>
-                <h3 className="font-semibold mb-1">Error en Análisis IA</h3>
-                <p className="text-sm">{iaResult.error}</p>
+
+            {/* Filtros y búsqueda */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex-1 relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="🔍 Filtra las respuestas... (precio, proveedor, certificaciones, etc.)"
+                    value={filterQuery}
+                    onChange={(e) => setFilterQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border-2 border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-400 transition-all duration-300"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <FunnelIcon className="w-5 h-5 text-gray-400" />
+                  <span className="text-sm text-gray-600">Ordenar por:</span>
+                  <select
+                    value={`${sortBy}-${sortOrder}`}
+                    onChange={(e) => {
+                      const [field, order] = e.target.value.split('-');
+                      setSortBy(field as any);
+                      setSortOrder(order as any);
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-400"
+                  >
+                    <option value="price-asc">Precio (Menor a Mayor)</option>
+                    <option value="price-desc">Precio (Mayor a Menor)</option>
+                    <option value="delivery-asc">Entrega (Más Rápida)</option>
+                    <option value="delivery-desc">Entrega (Más Lenta)</option>
+                    <option value="certifications-desc">Certificaciones (Más)</option>
+                    <option value="certifications-asc">Certificaciones (Menos)</option>
+                    <option value="date-desc">Fecha (Más Reciente)</option>
+                    <option value="date-asc">Fecha (Más Antigua)</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="text-sm text-gray-600">
+                💡 Ejemplos de filtros: "2000" (precio menor a 2000), "ISO" (con certificación ISO), "ABC" (proveedor ABC)
               </div>
             </div>
+
+            {/* Tabla de respuestas */}
+            {filteredAndSortedResponses.length > 0 ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                          Proveedor
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-900 cursor-pointer hover:bg-gray-100"
+                          onClick={() => handleSort('price')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Precio Total
+                            {sortBy === 'price' && (
+                              <span className="text-blue-600">
+                                {sortOrder === 'asc' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-900 cursor-pointer hover:bg-gray-100"
+                          onClick={() => handleSort('delivery')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Tiempo de Entrega
+                            {sortBy === 'delivery' && (
+                              <span className="text-blue-600">
+                                {sortOrder === 'asc' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-6 py-4 text-left text-sm font-medium text-gray-900 cursor-pointer hover:bg-gray-100"
+                          onClick={() => handleSort('certifications')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Certificaciones
+                            {sortBy === 'certifications' && (
+                              <span className="text-blue-600">
+                                {sortOrder === 'asc' ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                          Análisis IA
+                        </th>
+                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
+                          PDF Original
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {filteredAndSortedResponses.map((response, index) => (
+                        <tr key={response.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                <BuildingOfficeIcon className="w-4 h-4 text-white" />
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900">
+                                  {response.provider.company_name}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {new Date(response.created_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className={`text-lg font-semibold ${getPriceColor(response.total_price, responses)}`}>
+                              {response.currency} {response.total_price.toLocaleString()}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {response.ai_analysis.price_analysis}
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className={`font-medium ${getDeliveryColor(response.delivery_time)}`}>
+                              {response.delivery_time}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {response.ai_analysis.delivery_analysis}
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              <div className="text-lg font-semibold text-green-600">
+                                {response.certifications_count}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {response.certifications.map((cert, certIndex) => (
+                                  <span
+                                    key={certIndex}
+                                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                                  >
+                                    <CheckCircleIcon className="w-3 h-3 mr-1" />
+                                    {cert}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              {response.ai_analysis.quality_analysis}
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <div className="max-w-xs">
+                              <div className="text-sm text-gray-900 font-medium mb-1">
+                                Recomendación IA:
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {response.ai_analysis.recommendation}
+                              </div>
+                            </div>
+                          </td>
+                          
+                          <td className="px-6 py-4">
+                            <button
+                              onClick={() => openPdf(response.pdf_url)}
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <EyeIcon className="w-4 h-4 mr-2" />
+                              Ver PDF
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <div className="w-20 h-20 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <DocumentTextIcon className="w-10 h-10 text-white" />
+                </div>
+                <h3 className="text-xl font-bold bg-gradient-to-r from-gray-600 to-gray-700 bg-clip-text text-transparent mb-3">
+                  {filterQuery ? 'No se encontraron resultados' : 'No hay respuestas aún'}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {filterQuery 
+                    ? 'Intenta ajustar los filtros de búsqueda'
+                    : 'Los proveedores aún no han enviado sus cotizaciones'
+                  }
+                </p>
+                {filterQuery && (
+                  <button
+                    onClick={() => setFilterQuery('')}
+                    className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  >
+                    🔄 Limpiar Filtros
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Resumen de análisis */}
+            {responses.length > 0 && (
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
+                  <div className="flex items-center gap-3 mb-4">
+                    <CurrencyDollarIcon className="w-8 h-8 text-blue-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">Análisis de Precios</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Precio más bajo:</span>
+                      <span className="font-semibold text-green-600">
+                        {Math.min(...responses.map(r => r.total_price)).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Precio más alto:</span>
+                      <span className="font-semibold text-red-600">
+                        {Math.max(...responses.map(r => r.total_price)).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Promedio:</span>
+                      <span className="font-semibold text-gray-900">
+                        {(responses.reduce((sum, r) => sum + r.total_price, 0) / responses.length).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                  <div className="flex items-center gap-3 mb-4">
+                    <ClockIcon className="w-8 h-8 text-green-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">Tiempos de Entrega</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Más rápido:</span>
+                      <span className="font-semibold text-green-600">
+                        {responses.reduce((fastest, r) => {
+                          const days = parseInt(r.delivery_time.match(/\d+/)?.[0] || '0');
+                          const fastestDays = parseInt(fastest.match(/\d+/)?.[0] || '999');
+                          return days < fastestDays ? r.delivery_time : fastest;
+                        }, responses[0]?.delivery_time || '0 días')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Más lento:</span>
+                      <span className="font-semibold text-red-600">
+                        {responses.reduce((slowest, r) => {
+                          const days = parseInt(r.delivery_time.match(/\d+/)?.[0] || '0');
+                          const slowestDays = parseInt(slowest.match(/\d+/)?.[0] || '0');
+                          return days > slowestDays ? r.delivery_time : slowest;
+                        }, responses[0]?.delivery_time || '0 días')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+                  <div className="flex items-center gap-3 mb-4">
+                    <StarIcon className="w-8 h-8 text-purple-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">Certificaciones</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Mejor certificado:</span>
+                      <span className="font-semibold text-purple-600">
+                        {Math.max(...responses.map(r => r.certifications_count))} cert.
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Promedio:</span>
+                      <span className="font-semibold text-gray-900">
+                        {(responses.reduce((sum, r) => sum + r.certifications_count, 0) / responses.length).toFixed(1)} cert.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-        <div className="overflow-x-auto">
-          <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="border-b border-gray-200 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Total</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Moneda</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Certificaciones</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Análisis IA</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredResponses.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500">
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="text-4xl">📋</div>
-                      <div>No hay respuestas para mostrar</div>
-                    </div>
-                  </td>
-                </tr>
-              )}
-              {filteredResponses.map(r => (
-                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="border-b border-gray-200 px-4 py-3">
-                    <div className="text-sm">
-                      <div className="font-medium text-gray-900">Proveedor #{r.provider_id}</div>
-                      <div className="text-gray-500 text-xs">
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="border-b border-gray-200 px-4 py-3">
-                    <div className="font-medium text-gray-900">
-                      {r.total_price ? `$${r.total_price.toLocaleString()}` : '-'}
-                    </div>
-                  </td>
-                  <td className="border-b border-gray-200 px-4 py-3">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      {r.currency ?? 'N/A'}
-                    </span>
-                  </td>
-                  <td className="border-b border-gray-200 px-4 py-3">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {r.certifications_count ?? 0} cert.
-                    </span>
-                  </td>
-                  <td className="border-b border-gray-200 px-4 py-3 text-xs">
-                    {r.ia_data ? (
-                      <div className="max-w-xs truncate" title={JSON.stringify(r.ia_data)}>
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                          {typeof r.ia_data === 'string' ? r.ia_data : 'Análisis disponible'}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400">Pendiente</span>
-                    )}
-                  </td>
-                  <td className="border-b border-gray-200 px-4 py-3">
-                    {r.response_pdf_url && r.response_pdf_url !== '/static/uploads/quotes/null' ? (
-                      <a
-                        href={`${process.env.NEXT_PUBLIC_API_URL}/uploads/quotes/${r.response_pdf_url.split('/').pop()}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                      >
-                        📄 Ver PDF
-                      </a>
-                    ) : (
-                      <span className="text-gray-400 text-sm">Sin archivo</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
-      </div>
-    </div>
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 } 

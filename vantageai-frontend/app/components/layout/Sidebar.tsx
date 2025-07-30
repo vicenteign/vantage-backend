@@ -247,6 +247,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
+                    id={item.href === '/client/quotes' ? 'quotes-nav' : undefined}
+                    data-tour={item.href === '/provider/products' ? 'products-nav' : undefined}
                     className={`
                       flex items-center px-3 py-2.5 rounded-md transition-all duration-200 group
                       ${pathname === item.href 

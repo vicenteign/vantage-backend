@@ -14,8 +14,10 @@ import {
   ArrowRightIcon,
   EyeIcon,
   MagnifyingGlassIcon,
-  XMarkIcon
+  XMarkIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
+import { ClientDashboardTour } from '@/app/components/onboarding/ClientDashboardTour';
 
 interface ClientStats {
   total_quotes_sent: number;
@@ -70,6 +72,10 @@ export default function ClientDashboard() {
   
   // Referencia para scroll automático a resultados
   const searchResultsRef = useRef<HTMLDivElement>(null);
+  
+  // Estados para tour y onboarding
+  const [showTourInvitation, setShowTourInvitation] = useState(false);
+  const [isTourActive, setIsTourActive] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -87,6 +93,43 @@ export default function ClientDashboard() {
 
     fetchStats();
   }, []);
+
+  // Lógica para mostrar invitación al tour
+  useEffect(() => {
+    const hasSeenTourInvitation = localStorage.getItem('clientTourInvitationShown');
+    const hasCompletedTour = localStorage.getItem('clientTourCompleted');
+    
+    if (!hasSeenTourInvitation && !hasCompletedTour) {
+      // Mostrar invitación después de 2 segundos
+      const timer = setTimeout(() => {
+        setShowTourInvitation(true);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleStartTour = () => {
+    setShowTourInvitation(false);
+    setIsTourActive(true);
+    localStorage.setItem('clientTourInvitationShown', 'true');
+  };
+
+  const handleSkipTour = () => {
+    setShowTourInvitation(false);
+    localStorage.setItem('clientTourInvitationShown', 'true');
+  };
+
+  const handleCompleteTour = () => {
+    setIsTourActive(false);
+    localStorage.setItem('clientTourCompleted', 'true');
+    toast.success('¡Tour completado! Ya conoces las funciones principales.');
+  };
+
+  const handleSkipTourFromTour = () => {
+    setIsTourActive(false);
+    localStorage.setItem('clientTourCompleted', 'true');
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -210,6 +253,13 @@ export default function ClientDashboard() {
   return (
     <ProtectedRoute requiredRole="cliente">
       <DashboardLayout>
+        {/* Tour Component */}
+        <ClientDashboardTour 
+          isActive={isTourActive}
+          onComplete={handleCompleteTour}
+          onSkip={handleSkipTourFromTour}
+        />
+        
         <div className="min-h-screen bg-gray-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header */}
@@ -251,7 +301,7 @@ export default function ClientDashboard() {
                   </div>
                 </div>
                 
-                <div className="flex gap-3">
+                <div className="flex gap-3" id="ai-search-bar">
                   <div className="flex-1 relative">
                     <input
                       type="text"
@@ -293,13 +343,22 @@ export default function ClientDashboard() {
                   )}
                 </div>
                 
-                <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span>IA Activa</span>
+                {/* Botón de búsqueda avanzada */}
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                      <span>IA Activa</span>
+                    </div>
+                    <span>•</span>
+                    <span>💡 Ejemplos: "bombas para minería", "servicios de mantenimiento", "equipos de seguridad"</span>
                   </div>
-                  <span>•</span>
-                  <span>💡 Ejemplos: "bombas para minería", "servicios de mantenimiento", "equipos de seguridad"</span>
+                  <button
+                    onClick={() => router.push('/search')}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-300"
+                  >
+                    🔍 Búsqueda Avanzada
+                  </button>
                 </div>
               </div>
             </div>
@@ -463,7 +522,7 @@ export default function ClientDashboard() {
             )}
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="featured-items">
               <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
                 <div className="flex items-center">
                   <div className="p-2 bg-blue-100 rounded-lg">
@@ -581,6 +640,41 @@ export default function ClientDashboard() {
             </div>
           </div>
         </div>
+        
+        {/* Tour Invitation Toast */}
+        {showTourInvitation && (
+          <div className="fixed bottom-4 right-4 z-50">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 max-w-sm">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <SparklesIcon className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 mb-1">
+                    ¿Es tu primera vez aquí?
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Un tour rápido te mostrará cómo sacar el máximo provecho a Vantage.ai.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleStartTour}
+                      className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300"
+                    >
+                      Hacer el Tour
+                    </button>
+                    <button
+                      onClick={handleSkipTour}
+                      className="inline-flex items-center px-4 py-2 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </DashboardLayout>
     </ProtectedRoute>
   );

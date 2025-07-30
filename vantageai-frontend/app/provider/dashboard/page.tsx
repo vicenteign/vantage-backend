@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/app/components/layout/DashboardLayout';
 import { ProtectedRoute } from '@/app/components/auth/ProtectedRoute';
+import { ProviderDashboardTour } from '@/app/components/onboarding/ProviderDashboardTour';
 import apiClient from '@/app/lib/api';
 import { toast } from 'sonner';
 
@@ -16,6 +17,7 @@ interface ProviderStats {
 export default function ProviderDashboard() {
   const [stats, setStats] = useState<ProviderStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -46,6 +48,28 @@ export default function ProviderDashboard() {
 
     fetchStats();
   }, []);
+
+  // Check if tour should be shown
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem('provider-tour-completed');
+    if (!hasSeenTour) {
+      // Show tour after a short delay
+      const timer = setTimeout(() => {
+        setShowTour(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleTourComplete = () => {
+    localStorage.setItem('provider-tour-completed', 'true');
+    setShowTour(false);
+  };
+
+  const handleTourSkip = () => {
+    localStorage.setItem('provider-tour-completed', 'true');
+    setShowTour(false);
+  };
 
   if (loading) {
     return (
@@ -112,7 +136,10 @@ export default function ProviderDashboard() {
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              <button 
+                data-tour="create-product"
+                className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
                 <span className="text-2xl mr-3">➕</span>
                 <div className="text-left">
                   <p className="font-medium text-gray-900">Agregar Producto</p>
@@ -130,6 +157,13 @@ export default function ProviderDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Tour Component */}
+        <ProviderDashboardTour
+          isActive={showTour}
+          onComplete={handleTourComplete}
+          onSkip={handleTourSkip}
+        />
       </DashboardLayout>
     </ProtectedRoute>
   );

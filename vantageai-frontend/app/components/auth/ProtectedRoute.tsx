@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { jwtDecode } from 'jwt-decode';
+import apiClient from '@/app/lib/api';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,10 +19,11 @@ interface DecodedToken {
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
         const token = localStorage.getItem('accessToken');
         
@@ -58,6 +60,29 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
         console.log('User role from localStorage:', localStorage.getItem('userRole'));
         console.log('Required role:', requiredRole);
         setIsAuthenticated(true);
+        
+        // Verificar onboarding después de autenticación exitosa
+        if (requiredRole === 'cliente' || requiredRole === 'proveedor') {
+          try {
+            const response = await apiClient.get('/api/users/onboarding-status');
+            const { has_completed_onboarding, user_role } = response.data;
+            
+            // Si no ha completado el onboarding, redirigir según el rol
+            if (!has_completed_onboarding) {
+              if (user_role === 'cliente') {
+                router.push('/onboarding/client');
+                return;
+              } else if (user_role === 'proveedor') {
+                router.push('/onboarding/provider');
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Error checking onboarding status:', error);
+          }
+        }
+        
+        setHasCheckedOnboarding(true);
       } catch (error) {
         console.error('Auth error:', error);
         localStorage.removeItem('accessToken');

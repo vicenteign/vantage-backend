@@ -1,6 +1,10 @@
 from flask import request, jsonify, Blueprint
 from .models import db, Product, Service, ProviderProfile, User, Category, ProviderContact, ProviderCertification
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import and_, or_
+import os
+import requests
+from typing import List, Dict, Any
 
 catalog_bp = Blueprint('catalog', __name__, url_prefix='/catalog')
 
@@ -663,3 +667,192 @@ def toggle_service_featured(service_id):
         "service_id": service.id,
         "is_featured": service.is_featured
     }) 
+
+@catalog_bp.route('/search', methods=['GET'])
+def search_catalog():
+    """
+    Endpoint de búsqueda híbrida que combina búsqueda IA con filtros estructurados
+    """
+    try:
+        # Obtener parámetros de búsqueda
+        query = request.args.get('q', '').strip()
+        category_id = request.args.get('category')
+        provider_id = request.args.get('provider')
+        has_cert_iso9001 = request.args.get('has_cert_iso9001')
+        has_cert_iso14001 = request.args.get('has_cert_iso14001')
+        is_featured = request.args.get('is_featured')
+        item_type = request.args.get('type', 'all')  # 'producto', 'servicio', 'all'
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 12))
+        
+        # Paso A: Búsqueda IA con Pinecone (si hay query de texto)
+        relevant_ids = []
+        if query:
+            try:
+                # Llamada a Pinecone para obtener IDs relevantes
+                pinecone_response = requests.post(
+                    'http://localhost:8000/api/ia/search-catalog',
+                    json={'query': query},
+                    headers={'Content-Type': 'application/json'},
+                    timeout=10
+                )
+                
+                if pinecone_response.status_code == 200:
+                    pinecone_data = pinecone_response.json()
+                    # Extraer IDs de productos y servicios de los resultados
+                    for item in pinecone_data.get('exact_matches', []) + pinecone_data.get('near_matches', []):
+                        relevant_ids.append(item['id'])
+                    
+                    print(f"🔍 Búsqueda IA encontrada: {len(relevant_ids)} IDs relevantes")
+                else:
+                    print(f"⚠️ Error en búsqueda IA: {pinecone_response.status_code}")
+                    
+            except Exception as e:
+                print(f"❌ Error conectando con Pinecone: {e}")
+                # Si falla la búsqueda IA, continuamos con búsqueda normal
+        
+        # Paso B: Aplicar filtros estructurados
+        base_query_products = Product.query
+        base_query_services = Service.query
+        
+        # Filtrar por IDs relevantes si hay resultados de IA
+        if relevant_ids:
+            base_query_products = base_query_products.filter(Product.id.in_(relevant_ids))
+            base_query_services = base_query_services.filter(Service.id.in_(relevant_ids))
+        
+        # Aplicar filtros adicionales
+        if category_id:
+            base_query_products = base_query_products.filter(Product.category_id == category_id)
+            base_query_services = base_query_services.filter(Service.category_id == category_id)
+        
+        if provider_id:
+            base_query_products = base_query_products.filter(Product.provider_id == provider_id)
+            base_query_services = base_query_services.filter(Service.provider_id == provider_id)
+        
+        if has_cert_iso9001 == 'true':
+            base_query_products = base_query_products.filter(Product.has_cert_iso9001 == True)
+            base_query_services = base_query_services.filter(Service.has_cert_iso9001 == True)
+        
+        if has_cert_iso14001 == 'true':
+            base_query_products = base_query_products.filter(Product.has_cert_iso14001 == True)
+            base_query_services = base_query_services.filter(Service.has_cert_iso14001 == True)
+        
+        if is_featured == 'true':
+            base_query_products = base_query_products.filter(Product.is_featured == True)
+            base_query_services = base_query_services.filter(Service.is_featured == True)
+        
+        # Obtener resultados según el tipo
+        results = []
+        total_count = 0
+        
+        if item_type in ['producto', 'all']:
+            products = base_query_products.paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+            for product in products.items:
+                provider = ProviderProfile.query.get(product.provider_id)
+                category = Category.query.get(product.category_id)
+                results.append({
+                    'id': product.id,
+                    'name': product.name,
+                    'description': product.description,
+                    'sku': product.sku,
+                    'price': product.price,
+                    'currency': product.currency,
+                    'technical_details': product.technical_details,
+                    'has_cert_iso9001': product.has_cert_iso9001,
+                    'has_cert_iso14001': product.has_cert_iso14001,
+                    'is_featured': product.is_featured,
+                    'type': 'producto',
+                    'provider': {
+                        'id': provider.id,
+                        'name': provider.company_name
+                    } if provider else None,
+                    'category': {
+                        'id': category.id,
+                        'name': category.name
+                    } if category else None,
+                    'created_at': product.created_at.isoformat() if product.created_at else None
+                })
+            total_count += products.total
+        
+        if item_type in ['servicio', 'all']:
+            services = base_query_services.paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+            for service in services.items:
+                provider = ProviderProfile.query.get(service.provider_id)
+                category = Category.query.get(service.category_id)
+                results.append({
+                    'id': service.id,
+                    'name': service.name,
+                    'description': service.description,
+                    'modality': service.modality,
+                    'duration': service.duration,
+                    'price': service.price,
+                    'currency': service.currency,
+                    'technical_details': service.technical_details,
+                    'has_cert_iso9001': service.has_cert_iso9001,
+                    'has_cert_iso14001': service.has_cert_iso14001,
+                    'is_featured': service.is_featured,
+                    'type': 'servicio',
+                    'provider': {
+                        'id': provider.id,
+                        'name': provider.company_name
+                    } if provider else None,
+                    'category': {
+                        'id': category.id,
+                        'name': category.name
+                    } if category else None,
+                    'created_at': service.created_at.isoformat() if service.created_at else None
+                })
+            total_count += services.total
+        
+        # Ordenar resultados por relevancia (si hay query) o por fecha
+        if query and relevant_ids:
+            # Ordenar por el orden de relevancia de Pinecone
+            id_to_rank = {id: rank for rank, id in enumerate(relevant_ids)}
+            results.sort(key=lambda x: id_to_rank.get(x['id'], len(relevant_ids)))
+        else:
+            # Ordenar por fecha de creación (más recientes primero)
+            results.sort(key=lambda x: x['created_at'] or '', reverse=True)
+        
+        # Aplicar paginación manual si es necesario
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_results = results[start_idx:end_idx]
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'items': paginated_results,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total_count,
+                    'pages': (total_count + per_page - 1) // per_page
+                },
+                'filters': {
+                    'query': query,
+                    'category_id': category_id,
+                    'provider_id': provider_id,
+                    'has_cert_iso9001': has_cert_iso9001,
+                    'has_cert_iso14001': has_cert_iso14001,
+                    'is_featured': is_featured,
+                    'type': item_type
+                },
+                'search_info': {
+                    'ai_search_used': bool(query and relevant_ids),
+                    'relevant_ids_count': len(relevant_ids),
+                    'total_results': len(paginated_results)
+                }
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error en búsqueda de catálogo: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'Error al realizar la búsqueda',
+            'error': str(e)
+        }), 500 

@@ -26,6 +26,7 @@ class User(db.Model):
     status = db.Column(db.Enum('activo', 'suspendido', name='user_statuses'), default='activo')
     company_id = db.Column(db.Integer, db.ForeignKey('client_companies.id'))
     branch_id = db.Column(db.Integer, db.ForeignKey('client_branches.id'), nullable=True)
+    has_completed_onboarding = db.Column(db.Boolean, default=False)  # Flag para onboarding
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -100,11 +101,16 @@ class Product(db.Model):
     technical_details = db.Column(db.Text)
     sku = db.Column(db.String)
     price = db.Column(db.Float, nullable=True)  # Precio del producto
+    currency = db.Column(db.String, default='USD')  # Moneda
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     status = db.Column(db.Enum('borrador', 'activo', 'inactivo', name='product_statuses'), default='borrador')
     is_featured = db.Column(db.Boolean, default=False)
+    has_cert_iso9001 = db.Column(db.Boolean, default=False)  # Certificación ISO 9001
+    has_cert_iso14001 = db.Column(db.Boolean, default=False)  # Certificación ISO 14001
     main_image_url = db.Column(db.String)  # Imagen principal del producto
     additional_images = db.Column(db.JSON)  # Array de URLs de imágenes adicionales
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     category = db.relationship('Category', backref='products')
 
 class Service(db.Model):
@@ -114,9 +120,17 @@ class Service(db.Model):
     name = db.Column(db.String)
     description = db.Column(db.Text)
     modality = db.Column(db.String)
+    duration = db.Column(db.String)  # Duración del servicio
+    price = db.Column(db.Float, nullable=True)  # Precio del servicio
+    currency = db.Column(db.String, default='USD')  # Moneda
+    technical_details = db.Column(db.Text)  # Detalles técnicos
+    has_cert_iso9001 = db.Column(db.Boolean, default=False)  # Certificación ISO 9001
+    has_cert_iso14001 = db.Column(db.Boolean, default=False)  # Certificación ISO 14001
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     status = db.Column(db.Enum('borrador', 'activo', 'inactivo', name='service_statuses'), default='borrador')
     is_featured = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     category = db.relationship('Category', backref='services')
 
 class ProviderCertification(db.Model):
