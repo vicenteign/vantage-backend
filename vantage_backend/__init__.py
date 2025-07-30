@@ -24,6 +24,8 @@ def create_app(config_class=Config):
     cors_origins = [
         "http://localhost:3000", 
         "http://127.0.0.1:3000", 
+        "http://localhost:3001", 
+        "http://127.0.0.1:3001", 
         "http://localhost:5002", 
         "http://127.0.0.1:5002",
         "https://5a218fd5abba.ngrok-free.app",
@@ -33,8 +35,10 @@ def create_app(config_class=Config):
         "http://*.compute.amazonaws.com",  # EC2 específico
         "https://*.compute.amazonaws.com", # EC2 específico con HTTPS
         "http://3.141.40.201:3000",  # Tu IP específica de EC2
+        "http://3.141.40.201:3001",  # Tu IP específica de EC2 (puerto alternativo)
         "http://3.141.40.201:5002",  # Tu IP específica de EC2
         "https://3.141.40.201:3000", # Tu IP específica de EC2 con HTTPS
+        "https://3.141.40.201:3001", # Tu IP específica de EC2 con HTTPS (puerto alternativo)
         "https://3.141.40.201:5002", # Tu IP específica de EC2 con HTTPS
     ]
     
