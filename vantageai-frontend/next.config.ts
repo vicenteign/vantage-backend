@@ -14,9 +14,9 @@ const nextConfig: NextConfig = {
     // Deshabilitar verificación de tipos durante el build para producción
     ignoreBuildErrors: true,
   },
-  // Configuración adicional para Tailwind CSS
+  // Deshabilitar optimización experimental de CSS que causa error de critters
   experimental: {
-    optimizeCss: true,
+    optimizeCss: false,
   },
 };
 
