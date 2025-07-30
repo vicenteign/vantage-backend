@@ -13,6 +13,9 @@ RUN npm ci
 # Copiar código del frontend
 COPY vantageai-frontend/ .
 
+# Asegurar que PostCSS y Tailwind estén configurados correctamente
+RUN npm install -g postcss-cli
+
 # Exponer puerto
 EXPOSE 3000
 
