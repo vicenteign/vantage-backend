@@ -1,0 +1,21 @@
+# Variables de entorno para producción en EC2
+# Copiar este contenido a un archivo .env en el servidor
+
+# API Keys
+OPENAI_API_KEY=tu-api-key-de-openai-aqui
+
+# Base de datos PostgreSQL
+DATABASE_URL=postgresql://vantage_user:vantage_password_secure@postgres:5432/vantageai
+
+# JWT Configuration
+JWT_SECRET_KEY=tu-jwt-secret-super-seguro-para-produccion-cambiar-por-una-clave-segura
+
+# CORS Configuration para Amplify
+CORS_ORIGINS=https://tu-dominio-amplify.amplifyapp.com,http://localhost:3000,https://tu-dominio-ec2.com
+
+# Configuración de Flask
+FLASK_APP=run_backend.py
+FLASK_ENV=production
+
+# Configuración de logging
+LOG_LEVEL=INFO 
