@@ -61,6 +61,7 @@ def create_app(config_class=Config):
     # Importar y registrar Blueprints
     from .routes import main_bp
     from .auth_bp import auth_bp
+    from .api_bp import api_bp
     from .provider_bp import provider_bp
     from .catalog_bp import catalog_bp
     from .client_bp import client_bp
@@ -70,6 +71,7 @@ def create_app(config_class=Config):
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(api_bp)
     app.register_blueprint(provider_bp)
     app.register_blueprint(catalog_bp)
     app.register_blueprint(client_bp)
