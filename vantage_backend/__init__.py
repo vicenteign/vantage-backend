@@ -20,44 +20,37 @@ def create_app(config_class=Config):
     jwt.init_app(app)
     migrate = Migrate(app, db)
 
-    # Configuración de CORS más flexible para EC2
-    cors_origins = [
+    # Configuración de CORS usando variables de entorno
+    import os
+    
+    # Obtener CORS_ORIGINS de las variables de entorno
+    cors_origins_env = os.environ.get('CORS_ORIGINS', 'http://localhost:3000')
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(',')]
+    
+    # Agregar dominios adicionales para desarrollo y producción
+    additional_origins = [
         "http://localhost:3000", 
         "http://127.0.0.1:3000", 
         "http://localhost:3001", 
         "http://127.0.0.1:3001", 
         "http://localhost:5002", 
         "http://127.0.0.1:5002",
-        "https://5a218fd5abba.ngrok-free.app",
-        "https://*.ngrok-free.app",  # Permitir cualquier subdominio de ngrok
-        "http://*.amazonaws.com",    # Permitir dominios de AWS
-        "https://*.amazonaws.com",   # Permitir dominios de AWS con HTTPS
-        "http://*.compute.amazonaws.com",  # EC2 específico
-        "https://*.compute.amazonaws.com", # EC2 específico con HTTPS
-        "http://3.141.40.201:3000",  # Tu IP específica de EC2
-        "http://3.141.40.201:3001",  # Tu IP específica de EC2 (puerto alternativo)
-        "http://3.141.40.201:5002",  # Tu IP específica de EC2
-        "https://3.141.40.201:3000", # Tu IP específica de EC2 con HTTPS
-        "https://3.141.40.201:3001", # Tu IP específica de EC2 con HTTPS (puerto alternativo)
-        "https://3.141.40.201:5002", # Tu IP específica de EC2 con HTTPS
+        "https://*.amplifyapp.com",    # Amplify domains
+        "https://*.amplify.aws",       # Amplify AWS domains
+        "https://*.amazonaws.com",     # AWS domains
+        "http://*.amazonaws.com",      # AWS domains HTTP
+        "https://*.compute.amazonaws.com", # EC2 domains
+        "http://*.compute.amazonaws.com",  # EC2 domains HTTP
     ]
     
-    # Agregar IP pública de EC2 si está disponible en variables de entorno
-    import os
-    ec2_public_ip = os.environ.get('EC2_PUBLIC_IP')
-    if ec2_public_ip:
-        cors_origins.extend([
-            f"http://{ec2_public_ip}",
-            f"http://{ec2_public_ip}:3000",
-            f"http://{ec2_public_ip}:5002",
-            f"https://{ec2_public_ip}",
-            f"https://{ec2_public_ip}:3000",
-            f"https://{ec2_public_ip}:5002",
-        ])
+    # Combinar orígenes de entorno con adicionales
+    all_origins = list(set(cors_origins + additional_origins))
+    
+    print(f"🌐 CORS Origins configurados: {all_origins}")
 
     # Configuración CORS más permisiva para desarrollo/producción
     CORS(app, 
-         origins=cors_origins, 
+         origins=all_origins, 
          supports_credentials=True,
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          allow_headers=["Content-Type", "Authorization", "X-Requested-With"])

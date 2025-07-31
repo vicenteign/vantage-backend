@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/app/components/layout/DashboardLayout';
 import { ProtectedRoute } from '@/app/components/auth/ProtectedRoute';
@@ -80,7 +80,20 @@ interface SearchResponse {
   };
 }
 
-export default function SearchPage() {
+// Componente de carga
+function SearchLoading() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Cargando búsqueda...</p>
+      </div>
+    </div>
+  );
+}
+
+// Componente principal de búsqueda
+function SearchContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -514,5 +527,14 @@ export default function SearchPage() {
         </div>
       </DashboardLayout>
     </ProtectedRoute>
+  );
+}
+
+// Componente principal con Suspense
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<SearchLoading />}>
+      <SearchContent />
+    </Suspense>
   );
 } 
