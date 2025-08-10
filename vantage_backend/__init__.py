@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask_migrate import Migrate
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
@@ -53,7 +53,23 @@ def create_app(config_class=Config):
          origins=all_origins, 
          supports_credentials=True,
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         allow_headers=["Content-Type", "Authorization", "X-Requested-With"])
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         expose_headers=["Content-Type", "Authorization"],
+         max_age=86400)
+
+    # Respuesta global para preflights (OPTIONS) con cabeceras CORS explícitas
+    @app.before_request
+    def handle_global_options_preflight():
+        if request.method == 'OPTIONS':
+            origin = request.headers.get('Origin', '*')
+            response = app.make_response(('', 204))
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Vary'] = 'Origin'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            # Incluir ambos casos para evitar problemas de case en algunos navegadores
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, authorization, X-Requested-With'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            return response
 
     # Importar y registrar Blueprints
     from .routes import main_bp

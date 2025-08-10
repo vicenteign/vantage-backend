@@ -62,7 +62,7 @@ export default function ProviderQuoteDetailPage() {
     const fetchQuoteRequest = async () => {
       try {
         const response = await apiClient.get(`/quotes/${quoteId}`);
-        setQuoteRequest(response.data);
+        setQuoteRequest(response.data.quote);
       } catch (error: any) {
         toast.error('Error al cargar la solicitud', {
           description: error.response?.data?.message || 'No se pudo cargar la información'
@@ -107,8 +107,14 @@ export default function ProviderQuoteDetailPage() {
     setUploadProgress(0);
 
     try {
+      if (!selectedFile) {
+        toast.error('Selecciona un archivo PDF');
+        return;
+      }
+      console.log('Subiendo archivo:', selectedFile.name, selectedFile.type, selectedFile.size);
       const formData = new FormData();
-      formData.append('pdf_file', selectedFile);
+      // El backend espera el campo 'file'
+      formData.append('file', selectedFile);
 
       // Simular progreso de carga
       const progressInterval = setInterval(() => {
@@ -122,12 +128,11 @@ export default function ProviderQuoteDetailPage() {
       }, 200);
 
       const response = await apiClient.post(
-        `/quotes/${quoteId}/responses`,
+        `/api/quotes/${quoteId}/responses`,
         formData,
         {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
+          // Override default JSON header from apiClient for FormData
+          headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (progressEvent) => {
             if (progressEvent.total) {
               const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -140,9 +145,7 @@ export default function ProviderQuoteDetailPage() {
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      const data: UploadResponse = response.data;
-
-      if (data.success) {
+      if (response.status === 201) {
         toast.success('Respuesta enviada exitosamente', {
           description: 'Tu cotización ha sido procesada y será analizada por IA'
         });
@@ -156,13 +159,13 @@ export default function ProviderQuoteDetailPage() {
           router.push('/provider/quotes');
         }, 2000);
       } else {
-        toast.error('Error al enviar la respuesta', {
-          description: data.message || 'No se pudo procesar la respuesta'
-        });
+        toast.error('Error al enviar la respuesta');
       }
     } catch (error: any) {
+      console.error('Upload error:', error);
+      const serverMsg = error?.response?.data?.error || error?.response?.data?.message;
       toast.error('Error al enviar la respuesta', {
-        description: error.response?.data?.message || 'Error de conexión'
+        description: serverMsg || error?.message || 'Error de conexión'
       });
     } finally {
       setUploading(false);
@@ -170,8 +173,9 @@ export default function ProviderQuoteDetailPage() {
     }
   };
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency.toLowerCase()) {
+  const getUrgencyColor = (urgency?: string) => {
+    const value = (urgency || '').toString().toLowerCase();
+    switch (value) {
       case 'alta':
         return 'bg-red-100 text-red-800';
       case 'media':
@@ -183,8 +187,9 @@ export default function ProviderQuoteDetailPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+  const getStatusColor = (status?: string) => {
+    const value = (status || '').toString().toLowerCase();
+    switch (value) {
       case 'respondida':
         return 'bg-green-100 text-green-800';
       case 'pendiente':
@@ -351,15 +356,15 @@ export default function ProviderQuoteDetailPage() {
                   <div className="space-y-4">
                     <div>
                       <div className="text-sm font-medium text-gray-600">Cliente</div>
-                      <div className="text-gray-900 font-semibold">{quoteRequest.client.full_name}</div>
+                      <div className="text-gray-900 font-semibold">{quoteRequest.client?.name || 'Cliente'}</div>
                     </div>
                     
                     <div>
                       <div className="text-sm font-medium text-gray-600">Email</div>
-                      <div className="text-gray-900">{quoteRequest.client.email}</div>
+                      <div className="text-gray-900">{quoteRequest.client?.email || '—'}</div>
                     </div>
                     
-                    {quoteRequest.client.company && (
+                    {quoteRequest.client?.company && (
                       <>
                         <div>
                           <div className="text-sm font-medium text-gray-600">Empresa</div>
