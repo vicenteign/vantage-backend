@@ -64,6 +64,9 @@ yarn.lock
 # dotenv environment variables file
 .env
 
+# Local Flask env file
+.flaskenv
+
 # IDE
 .vscode/
 .idea/
@@ -104,3 +107,6 @@ backup_*.sql
 
 # Frontend (separate repository)
 vantageai-frontend/ 
+
+# Local docs that may contain secrets
+RESUMEN_VARIABLES_ENTORNO.md
